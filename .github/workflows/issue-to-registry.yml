@@ -1,0 +1,95 @@
+name: Publish Issue to Registry
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish issue JSON to registry.json on gh-pages
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branch = 'gh-pages';
+
+            // find first JSON object/array in the body
+            const firstBrace = body.indexOf('{');
+            const firstBracket = body.indexOf('[');
+            let start = -1;
+            if(firstBrace === -1 && firstBracket === -1){
+              core.setFailed('Issue body does not contain JSON');
+              return;
+            }
+            if(firstBrace === -1) start = firstBracket; else if(firstBracket === -1) start = firstBrace; else start = Math.min(firstBrace, firstBracket);
+            let jsonText = body.slice(start).trim();
+            try{
+              const shared = JSON.parse(jsonText);
+              if(!shared.subjects || !Array.isArray(shared.subjects)){
+                core.setFailed('Parsed JSON does not contain subjects array');
+                return;
+              }
+
+              // Ensure gh-pages branch exists (create from main if necessary)
+              try{
+                await github.git.getRef({ owner, repo, ref: 'heads/' + branch });
+              }catch(e){
+                if(e.status === 404){
+                  const mainRef = await github.git.getRef({ owner, repo, ref: 'heads/main' });
+                  await github.git.createRef({ owner, repo, ref: 'refs/heads/' + branch, sha: mainRef.data.object.sha });
+                  core.info('Created branch ' + branch + ' from main');
+                } else {
+                  throw e;
+                }
+              }
+
+              // Read existing registry.json on gh-pages
+              let existing = [];
+              try{
+                const res = await github.repos.getContent({ owner, repo, path: 'registry.json', ref: branch });
+                const content = Buffer.from(res.data.content, res.data.encoding).toString();
+                existing = JSON.parse(content);
+              }catch(e){
+                if(e.status !== 404) throw e;
+                // not found -> start fresh
+                existing = [];
+              }
+
+              // Build record
+              const now = new Date().toISOString();
+              const record = {
+                id: Math.random().toString(36).slice(2,9),
+                name: shared.name || issue.title || '無題',
+                username: shared.username || issue.user.login,
+                subjects: shared.subjects,
+                previous: shared.previous || [],
+                source_issue: issue.html_url,
+                submitted_at: now
+              };
+
+              existing.push(record);
+
+              const updated = Buffer.from(JSON.stringify(existing, null, 2)).toString('base64');
+
+              // get sha if exists
+              let sha = undefined;
+              try{
+                const r = await github.repos.getContent({ owner, repo, path: 'registry.json', ref: branch });
+                sha = r.data.sha;
+              }catch(e){ if(e.status !== 404) throw e; }
+
+              await github.repos.createOrUpdateFileContents({
+                owner, repo, path: 'registry.json', message: `Add registry entry from issue #${issue.number}`, content: updated, branch, sha
+              });
+              core.info('registry.json updated on ' + branch);
+            }catch(err){
+              core.setFailed('Failed to parse or publish JSON: ' + err.message);
+            }
