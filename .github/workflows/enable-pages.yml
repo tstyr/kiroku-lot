@@ -1,0 +1,26 @@
+name: Enable GitHub Pages (manual)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  pages: write
+  contents: write
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable Pages (set source to gh-pages / root)
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            // Use REST endpoint to set pages source
+            const res = await github.request('PUT /repos/{owner}/{repo}/pages', {
+              owner, repo,
+              source: { branch: 'gh-pages', path: '/' }
+            });
+            console.log('Pages API response status:', res.status);
+            console.log(JSON.stringify(res.data, null, 2));
