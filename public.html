@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>公開ディレクトリ — テスト点数記録表</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="site-header card">
+      <h1>公開ディレクトリ</h1>
+      <p class="subtitle">みんなが提出したテスト記録の一覧（管理者が registry.json を更新することで反映されます）</p>
+    </header>
+
+    <section class="card">
+      <div id="dirList">読み込み中…</div>
+    </section>
+
+    <footer class="tiny card">提出はリポジトリに Issue を作る・PR を送るなどで管理者に送ってください。自動公開を有効にする場合は管理者権限で registry.json を更新してください。</footer>
+  </main>
+
+  <script>
+    async function loadRegistry(){
+      try{
+        const res = await fetch('./registry.json', {cache: 'no-store'});
+        if(!res.ok) return document.getElementById('dirList').innerText = '公開データはありません';
+        const data = await res.json();
+        if(!Array.isArray(data) || !data.length) return document.getElementById('dirList').innerText = '公開データはありません';
+        const container = document.getElementById('dirList');
+        let html = '<ul class="card">';
+        data.forEach(item=>{
+          html += `<li style="padding:12px;border-bottom:1px solid #f1f5f9"><strong>${item.username || '名無し'}</strong> — ${item.name || ''}<br><small class="subtitle">教科: ${ (item.subjects||[]).map(s=>s.name).join(', ') }</small></li>`;
+        });
+        html += '</ul>';
+        container.innerHTML = html;
+      }catch(e){ document.getElementById('dirList').innerText = '読み込みに失敗しました'; }
+    }
+    loadRegistry();
+  </script>
+</body>
+</html>

@@ -33,6 +33,15 @@
         <button id="exportBtn" class="btn">JSON をエクスポート</button>
         <input id="importInput" type="file" accept=".json" />
       </div>
+
+      <div class="row small">
+        <button id="shareBtn" class="btn">共有リンクを作成</button>
+        <input id="shareLink" placeholder="共有リンクがここに表示されます" readonly />
+        <button id="copyShareBtn" class="btn">コピー</button>
+      </div>
+      <div class="row small">
+        <button id="publishBtn" class="btn">公開ディレクトリへ投稿（Issueで提出）</button>
+      </div>
     </section>
 
     <section class="scoreboard card">
@@ -63,6 +72,19 @@
         <button id="addSubjectBtn" class="btn">教科を追加</button>
       </div>
 
+      <div class="compare-card card" id="compareCard">
+        <h3>他の人のデータと比較</h3>
+        <div class="compare-controls">
+          <textarea id="pasteShared" placeholder="ここに共有された JSON 文字列 (または共有 URL) を貼り付け"></textarea>
+          <div class="compare-actions">
+            <button id="loadSharedBtn" class="btn">読み込みして比較</button>
+            <button id="saveSharedBtn" class="btn">読み込んだデータをテストとして保存</button>
+          </div>
+        </div>
+
+        <div id="compareResult"></div>
+      </div>
+
       <!-- グラフ表示エリア -->
       <div class="chart-card card" id="chartCard">
         <h3 class="chart-title">点数グラフ（現在 / 前回）</h3>
@@ -82,3 +104,4 @@
   <script src="app.js" defer></script>
 </body>
 </html>
+
