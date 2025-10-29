@@ -65,5 +65,23 @@
     ],
     "source_issue": "https://github.com/tstyr/kiroku-lot/issues/3",
     "submitted_at": "2025-10-29T08:42:55.994Z"
+  },
+  {
+    "id": "ism60a0",
+    "name": "自動テスト投稿",
+    "username": "assistant-test",
+    "subjects": [
+      {
+        "name": "国語",
+        "score": 85
+      },
+      {
+        "name": "数学",
+        "score": 78
+      }
+    ],
+    "previous": [],
+    "source_issue": "https://github.com/tstyr/kiroku-lot/issues/4",
+    "submitted_at": "2025-10-29T14:59:42.469Z"
   }
 ]
