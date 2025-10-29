@@ -1,0 +1,24 @@
+name: Enable GitHub Pages with PAT
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  enable-with-pat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable Pages using PAT
+        env:
+          REPO: ${{ github.repository }}
+          PAT: ${{ secrets.PAGES_PAT }}
+        run: |
+          if [ -z "$PAT" ]; then
+            echo "Secret PAGES_PAT is not set. Please add a PAT to repo secrets and re-run." >&2
+            exit 1
+          fi
+          echo "Calling GitHub Pages API to set source to gh-pages / /"
+          curl -sS -X PUT \
+            -H "Authorization: token ${PAT}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${REPO}/pages \
+            -d '{"source":{"branch":"gh-pages","path":"/"}}' | jq .
