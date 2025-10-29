@@ -2,8 +2,6 @@ name: Enable GitHub Pages (manual)
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [ main ]
 
 permissions:
   pages: write
