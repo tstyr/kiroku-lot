@@ -26,26 +26,24 @@ jobs:
             const firstBracket = body.indexOf('[');
             let start = -1;
             if(firstBrace === -1 && firstBracket === -1){
-              core.setFailed('Issue body does not contain JSON');
-              return;
+              throw new Error('Issue body does not contain JSON');
             }
             if(firstBrace === -1) start = firstBracket; else if(firstBracket === -1) start = firstBrace; else start = Math.min(firstBrace, firstBracket);
             let jsonText = body.slice(start).trim();
             try{
               const shared = JSON.parse(jsonText);
               if(!shared.subjects || !Array.isArray(shared.subjects)){
-                core.setFailed('Parsed JSON does not contain subjects array');
-                return;
+                throw new Error('Parsed JSON does not contain subjects array');
               }
 
               // Ensure gh-pages branch exists (create from main if necessary)
               try{
-                await github.git.getRef({ owner, repo, ref: 'heads/' + branch });
+                await github.rest.git.getRef({ owner, repo, ref: 'heads/' + branch });
               }catch(e){
                 if(e.status === 404){
-                  const mainRef = await github.git.getRef({ owner, repo, ref: 'heads/main' });
-                  await github.git.createRef({ owner, repo, ref: 'refs/heads/' + branch, sha: mainRef.data.object.sha });
-                  core.info('Created branch ' + branch + ' from main');
+                  const mainRef = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+                  await github.rest.git.createRef({ owner, repo, ref: 'refs/heads/' + branch, sha: mainRef.data.object.sha });
+                  console.log('Created branch ' + branch + ' from main');
                 } else {
                   throw e;
                 }
@@ -54,7 +52,7 @@ jobs:
               // Read existing registry.json on gh-pages
               let existing = [];
               try{
-                const res = await github.repos.getContent({ owner, repo, path: 'registry.json', ref: branch });
+                const res = await github.rest.repos.getContent({ owner, repo, path: 'registry.json', ref: branch });
                 const content = Buffer.from(res.data.content, res.data.encoding).toString();
                 existing = JSON.parse(content);
               }catch(e){
@@ -82,14 +80,14 @@ jobs:
               // get sha if exists
               let sha = undefined;
               try{
-                const r = await github.repos.getContent({ owner, repo, path: 'registry.json', ref: branch });
+                const r = await github.rest.repos.getContent({ owner, repo, path: 'registry.json', ref: branch });
                 sha = r.data.sha;
               }catch(e){ if(e.status !== 404) throw e; }
 
-              await github.repos.createOrUpdateFileContents({
+              await github.rest.repos.createOrUpdateFileContents({
                 owner, repo, path: 'registry.json', message: `Add registry entry from issue #${issue.number}`, content: updated, branch, sha
               });
-              core.info('registry.json updated on ' + branch);
+              console.log('registry.json updated on ' + branch);
             }catch(err){
-              core.setFailed('Failed to parse or publish JSON: ' + err.message);
+              throw new Error('Failed to parse or publish JSON: ' + err.message);
             }
