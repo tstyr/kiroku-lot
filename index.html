@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>テスト点数記録表</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="site-header card">
+      <div class="header-left">
+        <h1>テスト点数記録表</h1>
+        <p class="subtitle">テスト種類ごとに教科を追加して合計・平均と前回比較ができます</p>
+      </div>
+      <div class="header-right">
+        <label class="small-label">データ保存: ブラウザ（ローカルストレージ）</label>
+      </div>
+    </header>
+
+    <section class="controls card">
+      <div class="row">
+        <label>テスト種類
+          <select id="testSelect"></select>
+        </label>
+        <input id="newTestName" placeholder="新しいテスト名を入力（例：中間テスト1）" />
+        <button id="addTestBtn" class="btn">追加</button>
+        <button id="deleteTestBtn" class="btn danger">削除</button>
+      </div>
+
+      <div class="row small">
+        <button id="saveAsPrevBtn" class="btn">現在を「前回」として保存</button>
+        <button id="exportBtn" class="btn">JSON をエクスポート</button>
+        <input id="importInput" type="file" accept=".json" />
+      </div>
+    </section>
+
+    <section class="scoreboard card">
+      <div class="score-header">
+        <h2 id="boardTitle">—</h2>
+        <div class="totals">
+          <div>合計: <strong id="totalScore">0</strong></div>
+          <div>平均: <strong id="avgScore">0</strong></div>
+        </div>
+      </div>
+
+      <table class="score-table" id="scoreTable">
+        <thead>
+          <tr>
+            <th>教科名</th>
+            <th>点数</th>
+            <th>前回</th>
+            <th>差分</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="add-subject">
+        <input id="newSubjectName" placeholder="教科名を入力（例：数学）" />
+        <input id="newSubjectScore" placeholder="点数" type="number" min="0" max="100" />
+        <button id="addSubjectBtn" class="btn">教科を追加</button>
+      </div>
+
+      <!-- グラフ表示エリア -->
+      <div class="chart-card card" id="chartCard">
+        <h3 class="chart-title">点数グラフ（現在 / 前回）</h3>
+        <canvas id="scoreChart" width="800" height="320"></canvas>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="swatch current"></span> 現在</span>
+          <span class="legend-item"><span class="swatch previous"></span> 前回</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="card tiny">
+      <small>データはローカルストレージに保存されます。バックアップは JSON エクスポートを使用してください。</small>
+    </footer>
+  </main>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
