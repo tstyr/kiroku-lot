@@ -18,7 +18,15 @@
     avgScore: null,
     newSubjectName: null,
     newSubjectScore: null,
-    addSubjectBtn: null
+    addSubjectBtn: null,
+    shareBtn: null,
+    shareLink: null,
+    copyShareBtn: null,
+    publishBtn: null,
+    pasteShared: null,
+    loadSharedBtn: null,
+    saveSharedBtn: null,
+    compareResult: null
   };
 
   let testRecords = [];
@@ -272,6 +280,118 @@
     a.click();
   }
 
+  // --- 共有 / 比較機能 ---
+  function utf8_to_b64(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+  function b64_to_utf8(str) {
+    return decodeURIComponent(escape(atob(str)));
+  }
+
+  function generateShareLink(){
+    const test = testRecords.find(t=>t.id===currentTestId);
+    if(!test) return alert('共有するテストがありません');
+    // attach username if available
+    const username = localStorage.getItem('kl_username') || null;
+    const payloadObj = Object.assign({}, test, {username});
+    const payload = JSON.stringify(payloadObj);
+    const encoded = utf8_to_b64(payload);
+    const url = location.origin + location.pathname + '?share=' + encodeURIComponent(encoded);
+    els.shareLink.value = url;
+    return url;
+  }
+
+  function copyShareLink(){
+    const v = els.shareLink.value;
+    if(!v) return alert('先に共有リンクを作成してください');
+    navigator.clipboard?.writeText(v).then(()=> alert('リンクをコピーしました'))
+      .catch(()=> alert('コピーに失敗しました。手動でコピーしてください'));
+  }
+
+  function parseSharedParam(){
+    const sp = new URLSearchParams(location.search).get('share');
+    if(!sp) return null;
+    try{
+      const decoded = b64_to_utf8(decodeURIComponent(sp));
+      return JSON.parse(decoded);
+    }catch(e){ console.error('parseSharedParam',e); return null; }
+  }
+
+  function loadSharedFromText(txt){
+    if(!txt) return null;
+    // if it looks like a URL with ?share=, extract
+    try{
+      if(txt.includes('?share=')){
+        const u = new URL(txt.trim());
+        const sp = u.searchParams.get('share');
+        if(sp){ return JSON.parse(b64_to_utf8(decodeURIComponent(sp))); }
+      }
+    }catch(e){ /* not a URL */ }
+    // try raw base64 or raw json
+    try{
+      // base64 attempt
+      const maybe = txt.trim();
+      if(maybe.startsWith('{') || maybe.startsWith('[')){
+        return JSON.parse(maybe);
+      }
+      // try base64 decode -> json
+      const dec = b64_to_utf8(maybe);
+      return JSON.parse(dec);
+    }catch(e){ console.error('loadSharedFromText', e); alert('共有データの形式が不正です'); return null; }
+  }
+
+  function renderComparison(shared){
+    const test = testRecords.find(t=>t.id===currentTestId);
+    const container = els.compareResult;
+    if(!test){ container.innerHTML = '<div>現在のテストが選択されていません</div>'; return; }
+    if(!shared){ container.innerHTML = '<div>共有データが読み込まれていません</div>'; return; }
+
+    const prevMap = new Map((test.previous||[]).map(s=>[s.name,s.score]));
+    const sharedPrevMap = new Map((shared.previous||[]).map(s=>[s.name,s.score]));
+
+    // combine subject names from both
+    const names = Array.from(new Set([...(test.subjects||[]).map(s=>s.name), ...(shared.subjects||[]).map(s=>s.name)]) );
+
+    let html = '';
+    html += `<table class="compare-table"><thead><tr><th>教科</th><th>あなた</th><th>共有者</th><th>差分</th></tr></thead><tbody>`;
+    let totalA=0, countA=0, totalB=0, countB=0;
+    names.forEach(name=>{
+      const aSub = (test.subjects||[]).find(s=>s.name===name);
+      const bSub = (shared.subjects||[]).find(s=>s.name===name);
+      const a = aSub && typeof aSub.score==='number' ? aSub.score : null;
+      const b = bSub && typeof bSub.score==='number' ? bSub.score : null;
+      if(a!=null){ totalA+=a; countA++; }
+      if(b!=null){ totalB+=b; countB++; }
+      let diff = '—';
+      if(a!=null && b!=null){ const d = a - b; diff = (d>=0?`+${d}`:d); }
+      html += `<tr><td>${name}</td><td>${a==null?'—':a}</td><td>${b==null?'—':b}</td><td>${diff}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    html += `<div class="compare-summary"><div class="badge">あなた 合計: ${Math.round(totalA*100)/100} 平均: ${countA?Math.round((totalA/countA)*100)/100:0}</div><div class="badge">共有者 合計: ${Math.round(totalB*100)/100} 平均: ${countB?Math.round((totalB/countB)*100)/100:0}</div></div>`;
+    container.innerHTML = html;
+  }
+
+  function saveSharedAsTest(shared){
+    if(!shared) return alert('保存するデータがありません');
+    const name = prompt('保存するテスト名を入力してください', shared.name || '共有テスト');
+    if(!name) return;
+    const t = {id: uid(), name, subjects: shared.subjects || [], previous: shared.previous || []};
+    testRecords.push(t); save(); refreshTestSelect(); alert('共有データをテストとして保存しました');
+  }
+
+  // Publish: open GitHub new issue page with payload in body (user will submit issue)
+  function publishToIssue(){
+    const test = testRecords.find(t=>t.id===currentTestId);
+    if(!test) return alert('投稿するテストがありません');
+    const username = localStorage.getItem('kl_username') || '';
+    const payloadObj = Object.assign({}, test, {username});
+    const body = encodeURIComponent('共有データ (JSON)\n\n' + JSON.stringify(payloadObj, null, 2));
+    const title = encodeURIComponent(`[投稿] ${payloadObj.name || 'テスト' } by ${username || '名無し'}`);
+    // Open GitHub issue new with prefilled title/body
+    const url = `https://github.com/tstyr/kiroku-lot/issues/new?title=${title}&body=${body}`;
+    window.open(url, '_blank');
+  }
+
   function importJSON(file){
     const fr = new FileReader();
     fr.onload = () => {
@@ -300,6 +420,15 @@
     els.newSubjectName = $('newSubjectName');
     els.newSubjectScore = $('newSubjectScore');
     els.addSubjectBtn = $('addSubjectBtn');
+  // share / compare elements
+  els.shareBtn = $('shareBtn');
+  els.shareLink = $('shareLink');
+  els.copyShareBtn = $('copyShareBtn');
+  els.publishBtn = $('publishBtn');
+  els.pasteShared = $('pasteShared');
+  els.loadSharedBtn = $('loadSharedBtn');
+  els.saveSharedBtn = $('saveSharedBtn');
+  els.compareResult = $('compareResult');
 
     els.addTestBtn.addEventListener('click', ()=>{
       const name = els.newTestName.value.trim();
@@ -318,6 +447,20 @@
     els.saveAsPrevBtn.addEventListener('click', saveAsPrevious);
     els.exportBtn.addEventListener('click', exportJSON);
     els.importInput.addEventListener('change', (e)=>{ const file = e.target.files[0]; if(file) importJSON(file); });
+    // share / compare handlers
+    if(els.shareBtn) els.shareBtn.addEventListener('click', ()=>{ generateShareLink(); });
+    if(els.copyShareBtn) els.copyShareBtn.addEventListener('click', copyShareLink);
+    if(els.publishBtn) els.publishBtn.addEventListener('click', publishToIssue);
+    if(els.loadSharedBtn) els.loadSharedBtn.addEventListener('click', ()=>{
+      const txt = els.pasteShared.value;
+      const shared = loadSharedFromText(txt);
+      if(shared) renderComparison(shared);
+    });
+    if(els.saveSharedBtn) els.saveSharedBtn.addEventListener('click', ()=>{
+      const txt = els.pasteShared.value;
+      const shared = loadSharedFromText(txt);
+      if(shared) saveSharedAsTest(shared);
+    });
   }
 
   // 初期化
@@ -331,6 +474,13 @@
       drawChart(test);
     });
     window.addEventListener('beforeunload', ()=> save());
+    // parse share param on load and render comparison if present
+    const sharedFromUrl = parseSharedParam();
+    if(sharedFromUrl){
+      const pasteEl = document.getElementById('pasteShared');
+      if(pasteEl) pasteEl.value = JSON.stringify(sharedFromUrl, null, 2);
+      renderComparison(sharedFromUrl);
+    }
   });
 
   // (完了) renderBoard で drawChart を直接呼び出すようにしました
