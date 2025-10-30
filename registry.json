@@ -3,14 +3,50 @@
     "username": "sample_user",
     "name": "定期テスト（サンプル）",
     "subjects": [
-      {"name":"国語","score":80},
-      {"name":"数学","score":75},
-      {"name":"英語","score":88}
+      {
+        "name": "国語",
+        "score": 80
+      },
+      {
+        "name": "数学",
+        "score": 75
+      },
+      {
+        "name": "英語",
+        "score": 88
+      }
     ],
     "previous": [
-      {"name":"国語","score":78},
-      {"name":"数学","score":70},
-      {"name":"英語","score":82}
+      {
+        "name": "国語",
+        "score": 78
+      },
+      {
+        "name": "数学",
+        "score": 70
+      },
+      {
+        "name": "英語",
+        "score": 82
+      }
     ]
+  },
+  {
+    "id": "7fc1hao",
+    "name": "test1",
+    "username": "tstyr",
+    "subjects": [
+      {
+        "name": "a",
+        "score": 100
+      },
+      {
+        "name": "b",
+        "score": 30
+      }
+    ],
+    "previous": [],
+    "source_issue": "https://github.com/tstyr/kiroku-lot/issues/5",
+    "submitted_at": "2025-10-30T02:34:53.036Z"
   }
 ]
