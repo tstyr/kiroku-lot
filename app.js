@@ -1,6 +1,6 @@
 // テスト点数記録アプリ（ローカルストレージ保存）
 (() => {
-  const APP_VERSION = 'v1.00';  // アプリケーションバージョン
+  const APP_VERSION = 'v1.01';  // アプリケーションバージョン
   const LS_KEY = 'kiroku_lot_tests_v1';
 
   function uid() { return Math.random().toString(36).slice(2,9); }
@@ -99,6 +99,19 @@
         test.subjects.push({name: subj.name, score: null});
       }
     });
+
+    // テスト種類にもテンプレートの教科を自動追加
+    const existingTestSelect = document.getElementById('newSubjectName');
+    if(existingTestSelect) {
+      template.subjects.forEach(subj => {
+        const opt = document.createElement('option');
+        opt.value = subj.name;
+        opt.textContent = subj.name;
+        if(!Array.from(existingTestSelect.options).find(o => o.value === subj.name)) {
+          existingTestSelect.appendChild(opt);
+        }
+      });
+    }
     
     save();
     renderBoard();
@@ -198,6 +211,20 @@
     if(currentTestId) els.testSelect.value = currentTestId;
   }
 
+  function updateCurrentTemplate() {
+    const test = testRecords.find(t=>t.id===currentTestId);
+    if(!test) return;
+    
+    // 現在のテストに対応するテンプレートを探す
+    const existingTemplate = templates.find(t => t.name === `${test.name}のテンプレート`);
+    if(existingTemplate) {
+      // テンプレートを更新
+      existingTemplate.subjects = test.subjects.map(s => ({name: s.name}));
+      saveTemplates();
+      refreshTemplateSelect();
+    }
+  }
+
   function renderBoard(){
     const test = testRecords.find(t=>t.id===currentTestId);
     if(!test){
@@ -268,7 +295,9 @@
       delBtn.className = 'action-btn'; delBtn.textContent = '削除';
       delBtn.addEventListener('click', ()=>{
         if(!confirm(`教科「${sub.name}」を削除しますか？`)) return;
-        test.subjects.splice(idx,1); save(); renderBoard();
+        test.subjects.splice(idx,1); save();
+        updateCurrentTemplate(); // テンプレートを自動更新
+        renderBoard();
       });
       tdOps.appendChild(delBtn);
       tr.appendChild(tdOps);
@@ -419,7 +448,9 @@
     const test = testRecords.find(t=>t.id===currentTestId);
     if(!test) return alert('先にテストを作成してください');
     test.subjects.push({name: name || '無題', score: score === '' ? null : (score==null ? null : Number(score))});
-    save(); renderBoard();
+    save();
+    updateCurrentTemplate(); // テンプレートを自動更新
+    renderBoard();
   }
 
   function saveAsPrevious(){
