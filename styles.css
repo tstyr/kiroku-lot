@@ -31,6 +31,8 @@ body{
 .site-header h1{margin:0;font-size:1.3rem}
 .subtitle{margin:6px 0 0;color:var(--muted);font-size:0.95rem}
 .header-right .small-label{color:var(--muted);font-size:12px}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.version-label{color:var(--muted);font-size:12px;font-weight:bold;background:#f1f5f9;padding:2px 6px;border-radius:4px}
 
 .controls .row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .controls input, .controls select{padding:8px;border-radius:8px;border:1px solid #eef3fb;background:transparent;min-width:180px}
@@ -88,3 +90,29 @@ body{
 .modal h3{margin:0 0 8px}
 .modal input{width:100%;padding:10px;border-radius:8px;border:1px solid #eef3fb;margin-bottom:10px}
 .modal .row{display:flex;gap:8px;justify-content:flex-end}
+
+/* 公開ディレクトリページのスタイル */
+.features h2{margin:0 0 16px;font-size:1.2rem}
+.features ul{margin:0;padding:0;list-style:none}
+.features li{margin-bottom:12px;font-weight:bold}
+.feature-detail{
+  font-weight:normal;
+  color:var(--muted);
+  font-size:0.9rem;
+  margin-top:2px
+}
+footer.tiny ul{
+  margin:4px 0;
+  padding-left:20px;
+  color:var(--muted);
+  font-size:12px
+}
+#dirList ul{
+  list-style:none;
+  margin:0;
+  padding:0
+}
+#dirList .subtitle{
+  display:block;
+  margin-top:4px
+}

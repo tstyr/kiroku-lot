@@ -1,5 +1,6 @@
 // テスト点数記録アプリ（ローカルストレージ保存）
 (() => {
+  const APP_VERSION = 'v1.00';  // アプリケーションバージョン
   const LS_KEY = 'kiroku_lot_tests_v1';
 
   function uid() { return Math.random().toString(36).slice(2,9); }
@@ -31,6 +32,8 @@
 
   let testRecords = [];
   let currentTestId = null;
+  let templates = [];
+  const TEMPLATE_LS_KEY = 'kiroku_lot_templates_v1';
 
   function $(id){ return document.getElementById(id); }
 
@@ -40,6 +43,84 @@
       if(!raw) return createInitialSample();
       return JSON.parse(raw);
     }catch(e){ console.error('load error', e); return createInitialSample(); }
+  }
+
+  function loadTemplates() {
+    try {
+      const raw = localStorage.getItem(TEMPLATE_LS_KEY);
+      if(!raw) return [];
+      return JSON.parse(raw);
+    } catch(e) {
+      console.error('template load error', e);
+      return [];
+    }
+  }
+
+  function saveTemplates() {
+    localStorage.setItem(TEMPLATE_LS_KEY, JSON.stringify(templates));
+  }
+
+  function saveAsTemplate() {
+    const test = testRecords.find(t => t.id === currentTestId);
+    if(!test) return alert('テンプレートとして保存するテストがありません');
+    const name = prompt('テンプレート名を入力してください', test.name + 'のテンプレート');
+    if(!name) return;
+    
+    const template = {
+      id: uid(),
+      name: name,
+      subjects: test.subjects.map(s => ({name: s.name})) // 点数は含めない
+    };
+    
+    templates.push(template);
+    saveTemplates();
+    alert('テンプレートを保存しました');
+  }
+
+  function applyTemplate(templateId) {
+    const template = templates.find(t => t.id === templateId);
+    if(!template) return;
+    
+    if(!currentTestId) {
+      addTest('新しいテスト');
+    }
+    
+    const test = testRecords.find(t => t.id === currentTestId);
+    if(!test) return;
+    
+    // 既存の教科を保持しつつ、テンプレートの教科を追加
+    template.subjects.forEach(subj => {
+      if(!test.subjects.find(s => s.name === subj.name)) {
+        test.subjects.push({name: subj.name, score: null});
+      }
+    });
+    
+    save();
+    renderBoard();
+  }
+
+  function shareTemplate(templateId) {
+    const template = templates.find(t => t.id === templateId);
+    if(!template) return alert('共有するテンプレートがありません');
+    
+    const payload = JSON.stringify(template);
+    const encoded = utf8_to_b64(payload);
+    const url = location.origin + location.pathname + '?template=' + encodeURIComponent(encoded);
+    
+    els.shareLink.value = url;
+    return url;
+  }
+
+  function loadSharedTemplate() {
+    const sp = new URLSearchParams(location.search).get('template');
+    if(!sp) return null;
+    try {
+      const decoded = b64_to_utf8(decodeURIComponent(sp));
+      return JSON.parse(decoded);
+    } catch(e) {
+      console.error('parseTemplateParam', e);
+      return null;
+    }
   }
 
   function createInitialSample(){
@@ -109,7 +190,14 @@
       scoreInput.addEventListener('input', e=>{
         const v = e.target.value;
         sub.score = v === '' ? null : Number(v);
-        save(); updateTotals(test); renderBoard();
+        save(); 
+        updateTotals(test); 
+        renderBoard();
+        // 点数変更時に自動的に共有リンクを更新
+        generateShareLink();
+        // 比較データが入力されている場合は自動的に比較を更新
+        const shared = loadSharedFromText(els.pasteShared.value);
+        if(shared) renderComparison(shared);
       });
       tdScore.appendChild(scoreInput);
       tr.appendChild(tdScore);
@@ -146,8 +234,9 @@
     });
 
     updateTotals(test);
-    // グラフを描画
-    drawChart(test);
+    // グラフを描画（共有データがある場合は一緒に表示）
+    const shared = loadSharedFromText(els.pasteShared?.value);
+    drawChart(test, shared);
   }
 
   function updateTotals(test){
@@ -159,7 +248,7 @@
   }
 
   // --- グラフ描画 ---
-  function drawChart(test){
+  function drawChart(test, sharedTest){
     const canvas = document.getElementById('scoreChart');
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -178,20 +267,45 @@
       return;
     }
 
-    const subjects = test.subjects;
-    const prevMap = new Map((test.previous||[]).map(s=>[s.name, s.score]));
-    const labels = subjects.map(s=>s.name);
-    const curr = subjects.map(s=> (typeof s.score === 'number') ? s.score : null);
-    const prev = subjects.map(s=> prevMap.has(s.name) ? prevMap.get(s.name) : null);
+    // 教科名を統合（自分のと共有データの両方の教科を含める）
+    const allSubjects = new Set([
+      ...test.subjects.map(s => s.name),
+      ...(sharedTest?.subjects || []).map(s => s.name)
+    ]);
+
+    const labels = Array.from(allSubjects);
+    // 自分のデータ
+    const curr = labels.map(name => {
+      const sub = test.subjects.find(s => s.name === name);
+      return sub && typeof sub.score === 'number' ? sub.score : null;
+    });
+    // 共有データ
+    const shared = labels.map(name => {
+      const sub = sharedTest?.subjects?.find(s => s.name === name);
+      return sub && typeof sub.score === 'number' ? sub.score : null;
+    });
 
     // 値の最大（100を上限にする）
-    const maxVal = Math.max(100, ...curr.filter(v=>v!=null), ...prev.filter(v=>v!=null));
+    const maxVal = Math.max(100, 
+      ...curr.filter(v=>v!=null),
+      ...(shared ? shared.filter(v=>v!=null) : [])
+    );
 
     const w = rect.width;
     const h = rect.height;
     const padding = {top:18, right:12, bottom:36, left:28};
     const chartW = w - padding.left - padding.right;
     const chartH = h - padding.top - padding.bottom;
+
+    // グラフの凡例
+    ctx.fillStyle = '#475569';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'right';
+    const legendY = padding.top - 4;
+    ctx.fillText('あなた', w - 120, legendY);
+    if(shared) {
+      ctx.fillText('共有データ', w - 10, legendY);
+    }
 
     // 軸描画（グリッド）
     ctx.strokeStyle = '#eef2ff'; ctx.lineWidth = 1;
@@ -209,14 +323,14 @@
 
     labels.forEach((lab, idx) => {
       const xCenter = padding.left + barGroupW * idx + barGroupW / 2;
-      // 前回（背景バー）
-      const pv = prev[idx];
-      if(pv != null){
-        const ph = (pv / maxVal) * chartH;
-        ctx.fillStyle = '#cbd5e1';
-        ctx.fillRect(xCenter - barWidth - 4, padding.top + chartH - ph, barWidth, ph);
+      // 共有データ
+      const sv = shared ? shared[idx] : null;
+      if(sv != null){
+        const sh = (sv / maxVal) * chartH;
+        ctx.fillStyle = '#fca5a5';  // 薄い赤色
+        ctx.fillRect(xCenter - barWidth - 4, padding.top + chartH - sh, barWidth, sh);
       }
-      // 現在バー
+      // 自分のデータ
       const cv = curr[idx];
       if(cv != null){
         const ch = (cv / maxVal) * chartH;
@@ -224,7 +338,7 @@
         const grad = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
         grad.addColorStop(0, '#60a5fa'); grad.addColorStop(1, '#6ee7b7');
         ctx.fillStyle = grad;
-        ctx.fillRect(xCenter - (barWidth/2) + 8, padding.top + chartH - ch, barWidth, ch);
+        ctx.fillRect(xCenter + 4, padding.top + chartH - ch, barWidth, ch);
         // 値ラベル
         ctx.fillStyle = '#0f172a'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
         ctx.fillText(String(cv), xCenter + 8, padding.top + chartH - ch - 6);
@@ -369,6 +483,9 @@
     html += `</tbody></table>`;
     html += `<div class="compare-summary"><div class="badge">あなた 合計: ${Math.round(totalA*100)/100} 平均: ${countA?Math.round((totalA/countA)*100)/100:0}</div><div class="badge">共有者 合計: ${Math.round(totalB*100)/100} 平均: ${countB?Math.round((totalB/countB)*100)/100:0}</div></div>`;
     container.innerHTML = html;
+    
+    // 比較グラフを描画
+    drawChart(test, shared);
   }
 
   function saveSharedAsTest(shared){
@@ -405,6 +522,17 @@
     fr.readAsText(file);
   }
 
+  function refreshTemplateSelect() {
+    const select = els.templateSelect;
+    select.innerHTML = '<option value="">テンプレートを選択...</option>';
+    templates.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name;
+      select.appendChild(opt);
+    });
+  }
+
   function bind(){
     els.testSelect = $('testSelect');
     els.addTestBtn = $('addTestBtn');
@@ -420,6 +548,10 @@
     els.newSubjectName = $('newSubjectName');
     els.newSubjectScore = $('newSubjectScore');
     els.addSubjectBtn = $('addSubjectBtn');
+    els.templateSelect = $('templateSelect');
+    els.saveTemplateBtn = $('saveTemplateBtn');
+    els.applyTemplateBtn = $('applyTemplateBtn');
+    els.shareTemplateBtn = $('shareTemplateBtn');
   // share / compare elements
   els.shareBtn = $('shareBtn');
   els.shareLink = $('shareLink');
@@ -456,30 +588,71 @@
       const shared = loadSharedFromText(txt);
       if(shared) renderComparison(shared);
     });
+    // 共有データが貼り付けられたら自動的に比較を実行
+    if(els.pasteShared) els.pasteShared.addEventListener('input', ()=>{
+      const txt = els.pasteShared.value;
+      const shared = loadSharedFromText(txt);
+      if(shared) renderComparison(shared);
+    });
     if(els.saveSharedBtn) els.saveSharedBtn.addEventListener('click', ()=>{
       const txt = els.pasteShared.value;
       const shared = loadSharedFromText(txt);
       if(shared) saveSharedAsTest(shared);
     });
+
+    // テンプレート関連のイベントハンドラ
+    els.saveTemplateBtn.addEventListener('click', saveAsTemplate);
+    els.applyTemplateBtn.addEventListener('click', () => {
+      const templateId = els.templateSelect.value;
+      if(!templateId) return alert('テンプレートを選択してください');
+      applyTemplate(templateId);
+    });
+    els.shareTemplateBtn.addEventListener('click', () => {
+      const templateId = els.templateSelect.value;
+      if(!templateId) return alert('テンプレートを選択してください');
+      shareTemplate(templateId);
+    });
+  }
+
+  // バージョン表示の更新
+  function updateVersionLabel() {
+    const versionLabel = document.getElementById('versionLabel');
+    if (versionLabel) {
+      versionLabel.textContent = APP_VERSION;
+    }
   }
 
   // 初期化
   document.addEventListener('DOMContentLoaded', ()=>{
     testRecords = load();
+    templates = loadTemplates();
+    updateVersionLabel();
     if(testRecords.length) currentTestId = testRecords[0].id;
-    bind(); refreshTestSelect(); renderBoard();
+    bind(); refreshTestSelect(); refreshTemplateSelect(); renderBoard();
     // ウィンドウリサイズ時にグラフを再描画
     window.addEventListener('resize', ()=>{
       const test = testRecords.find(t=>t.id===currentTestId);
       drawChart(test);
     });
     window.addEventListener('beforeunload', ()=> save());
-    // parse share param on load and render comparison if present
+    // parse share and template params on load
     const sharedFromUrl = parseSharedParam();
     if(sharedFromUrl){
       const pasteEl = document.getElementById('pasteShared');
       if(pasteEl) pasteEl.value = JSON.stringify(sharedFromUrl, null, 2);
       renderComparison(sharedFromUrl);
+    }
+
+    // テンプレートの共有URLから読み込み
+    const sharedTemplate = loadSharedTemplate();
+    if(sharedTemplate){
+      const confirmed = confirm(`共有されたテンプレート「${sharedTemplate.name}」を読み込みますか？`);
+      if(confirmed){
+        templates.push(sharedTemplate);
+        saveTemplates();
+        refreshTemplateSelect();
+        alert('テンプレートを読み込みました');
+      }
     }
   });
 

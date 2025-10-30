@@ -9,15 +9,45 @@
 <body>
   <main class="container">
     <header class="site-header card">
-      <h1>公開ディレクトリ</h1>
-      <p class="subtitle">みんなが提出したテスト記録の一覧（管理者が registry.json を更新することで反映されます）</p>
+      <div class="header-left">
+        <h1>公開ディレクトリ</h1>
+        <p class="subtitle">みんなが提出したテスト記録の一覧（管理者が registry.json を更新することで反映されます）</p>
+      </div>
+      <div class="header-right">
+        <a href="index.html" class="btn">アプリを開く</a>
+        <div class="version-label" id="versionLabel">v1.00</div>
+      </div>
     </header>
 
+    <section class="card features">
+      <h2>最新機能（v1.00）</h2>
+      <ul>
+        <li>教科リストのテンプレート機能
+          <div class="feature-detail">よく使う教科リストをテンプレートとして保存・共有できます</div>
+        </li>
+        <li>グラフ表示の強化
+          <div class="feature-detail">共有データとの比較を同じグラフ上で視覚的に確認できます</div>
+        </li>
+        <li>自動比較機能
+          <div class="feature-detail">共有データを貼り付けると自動的に比較結果を表示します</div>
+        </li>
+      </ul>
+    </section>
+
     <section class="card">
+      <h2>公開データ一覧</h2>
       <div id="dirList">読み込み中…</div>
     </section>
 
-    <footer class="tiny card">提出はリポジトリに Issue を作る・PR を送るなどで管理者に送ってください。自動公開を有効にする場合は管理者権限で registry.json を更新してください。</footer>
+    <footer class="tiny card">
+      <div>提出方法：</div>
+      <ul>
+        <li>アプリ内の「公開ディレクトリへ投稿」ボタンを使用（推奨）</li>
+        <li>リポジトリに Issue を作成</li>
+        <li>Pull Request を送信</li>
+      </ul>
+      <div>※管理者が registry.json を更新することで反映されます</div>
+    </footer>
   </main>
 
   <script>
