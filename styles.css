@@ -116,3 +116,6 @@ footer.tiny ul{
   display:block;
   margin-top:4px
 }
+
+/* Template QR styling (small inline) */
+#templateQR{width:88px;height:88px;border-radius:8px;object-fit:contain;border:1px solid #eef3fb;padding:6px;background:#fff}
