@@ -211,7 +211,18 @@
     if(currentTestId) els.testSelect.value = currentTestId;
   }
 
-  function updateCurrentTemplate() {
+  function renameCurrentTest() {
+    const test = testRecords.find(t => t.id === currentTestId);
+    if(!test) return alert('リネームするテストが選択されていません');
+    const newName = prompt('新しいテスト名を入力してください', test.name);
+    if(!newName || newName === test.name) return;
+    test.name = newName;
+    save();
+    refreshTestSelect();
+    renderBoard();
+  }
+
+  function renderBoard(){
     const test = testRecords.find(t=>t.id===currentTestId);
     if(!test) return;
     
@@ -611,6 +622,7 @@
     els.testSelect = $('testSelect');
     els.addTestBtn = $('addTestBtn');
     els.deleteTestBtn = $('deleteTestBtn');
+    els.renameTestBtn = $('renameTestBtn');
     els.newTestName = $('newTestName');
     els.saveAsPrevBtn = $('saveAsPrevBtn');
     els.exportBtn = $('exportBtn');
@@ -646,6 +658,7 @@
       addTest(name || `テスト ${testRecords.length+1}`);
       els.newTestName.value = '';
     });
+    els.renameTestBtn.addEventListener('click', renameCurrentTest);
     els.deleteTestBtn.addEventListener('click', deleteCurrentTest);
     els.testSelect.addEventListener('change', e=>{ currentTestId = e.target.value; renderBoard(); });
     els.addSubjectBtn.addEventListener('click', ()=>{
