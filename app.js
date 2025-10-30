@@ -23,6 +23,11 @@
     shareBtn: null,
     shareLink: null,
     copyShareBtn: null,
+    templateShareLink: null,
+    copyTemplateShareBtn: null,
+  showTemplateQRBtn: null,
+  downloadTemplateQRBtn: null,
+  templateQR: null,
     publishBtn: null,
     pasteShared: null,
     loadSharedBtn: null,
@@ -107,7 +112,14 @@
     const encoded = utf8_to_b64(payload);
     const url = location.origin + location.pathname + '?template=' + encodeURIComponent(encoded);
     
-    els.shareLink.value = url;
+    // set into template share input if present, otherwise fallback to generic shareLink
+    if(els.templateShareLink) {
+      els.templateShareLink.value = url;
+    } else if(els.shareLink) {
+      els.shareLink.value = url;
+    }
+    // 自動でQRも更新
+    updateTemplateQR(url);
     return url;
   }
 
@@ -121,6 +133,37 @@
       console.error('parseTemplateParam', e);
       return null;
     }
+  }
+
+  function copyTemplateShareLink(){
+    const v = els.templateShareLink?.value;
+    if(!v) return alert('先にテンプレートの共有リンクを作成してください');
+    navigator.clipboard?.writeText(v).then(()=> alert('テンプレートリンクをコピーしました'))
+      .catch(()=> alert('コピーに失敗しました。手動でコピーしてください'));
+  }
+
+  function updateTemplateQR(url){
+    if(!els || !els.templateQR) return;
+    if(!url){ els.templateQR.style.display = 'none'; els.templateQR.src = ''; return; }
+    try{
+      // Use a simple external QR API to generate an image; encode URI safely
+      const encoded = encodeURIComponent(url);
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`;
+      els.templateQR.src = qrUrl;
+      els.templateQR.style.display = 'inline-block';
+    }catch(e){ console.error('updateTemplateQR', e); }
+  }
+
+  function downloadTemplateQR(){
+    const img = els.templateQR;
+    if(!img || !img.src) return alert('QRが生成されていません');
+    // download via opening a hidden link
+    const a = document.createElement('a');
+    a.href = img.src;
+    a.download = 'template_qr.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   function createInitialSample(){
@@ -552,6 +595,11 @@
     els.saveTemplateBtn = $('saveTemplateBtn');
     els.applyTemplateBtn = $('applyTemplateBtn');
     els.shareTemplateBtn = $('shareTemplateBtn');
+    els.templateShareLink = $('templateShareLink');
+    els.copyTemplateShareBtn = $('copyTemplateShareBtn');
+    els.showTemplateQRBtn = $('showTemplateQRBtn');
+    els.downloadTemplateQRBtn = $('downloadTemplateQRBtn');
+    els.templateQR = $('templateQR');
   // share / compare elements
   els.shareBtn = $('shareBtn');
   els.shareLink = $('shareLink');
@@ -599,6 +647,23 @@
       const shared = loadSharedFromText(txt);
       if(shared) saveSharedAsTest(shared);
     });
+
+    // テンプレートセレクトで選択したら自動で共有リンクを生成
+    if(els.templateSelect) els.templateSelect.addEventListener('change', (e) => {
+      const tid = e.target.value;
+      if(!tid){ if(els.templateShareLink) els.templateShareLink.value = ''; return; }
+      shareTemplate(tid);
+    });
+
+    if(els.copyTemplateShareBtn) els.copyTemplateShareBtn.addEventListener('click', copyTemplateShareLink);
+    if(els.showTemplateQRBtn) els.showTemplateQRBtn.addEventListener('click', ()=>{
+      const link = els.templateShareLink?.value || els.shareLink?.value;
+      if(!link) return alert('先にテンプレート共有リンクを生成してください');
+      // toggle display (but update QR first)
+      updateTemplateQR(link);
+      els.templateQR.style.display = 'inline-block';
+    });
+    if(els.downloadTemplateQRBtn) els.downloadTemplateQRBtn.addEventListener('click', downloadTemplateQR);
 
     // テンプレート関連のイベントハンドラ
     els.saveTemplateBtn.addEventListener('click', saveAsTemplate);

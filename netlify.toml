@@ -1,0 +1,15 @@
+# Netlify configuration for kiroku-lot
+# Publish the repository root (static site)
+[build]
+  publish = "."
+
+# Redirect non-file requests to index.html (useful for client-side routing / query params)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[context.production.environment]
+# You can add environment variables here if needed, e.g.
+# NODE_ENV = "production"
