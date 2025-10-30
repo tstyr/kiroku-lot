@@ -26,4 +26,4 @@ python3 -m http.server 8000
 - 教科ごとの配点（重み付け）・合計満点の設定
 - クラウド同期（認証付き）
 
-Made with ❤️
+Made with Kenta
