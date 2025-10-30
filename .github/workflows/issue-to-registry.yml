@@ -11,7 +11,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Publish issue JSON to registry.json on gh-pages
+      - name: Publish issue JSON to registry.json on main
         uses: actions/github-script@v6
         with:
           script: |
@@ -19,7 +19,7 @@ jobs:
             const body = issue.body || '';
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const branch = 'gh-pages';
+            const branch = 'main';
 
             // find first JSON object/array in the body
             const firstBrace = body.indexOf('{');
@@ -36,14 +36,17 @@ jobs:
                 throw new Error('Parsed JSON does not contain subjects array');
               }
 
-              // Ensure gh-pages branch exists (create from main if necessary)
+              // Ensure target branch exists (create from main if necessary)
               try{
                 await github.rest.git.getRef({ owner, repo, ref: 'heads/' + branch });
               }catch(e){
                 if(e.status === 404){
-                  const mainRef = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
-                  await github.rest.git.createRef({ owner, repo, ref: 'refs/heads/' + branch, sha: mainRef.data.object.sha });
-                  console.log('Created branch ' + branch + ' from main');
+                  // If main doesn't exist either, create branch from default ref
+                  const defaultRef = await github.rest.repos.get({ owner, repo });
+                  const base = defaultRef.data.default_branch || 'main';
+                  const baseRef = await github.rest.git.getRef({ owner, repo, ref: 'heads/' + base });
+                  await github.rest.git.createRef({ owner, repo, ref: 'refs/heads/' + branch, sha: baseRef.data.object.sha });
+                  console.log('Created branch ' + branch + ' from ' + base);
                 } else {
                   throw e;
                 }
