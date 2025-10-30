@@ -3,15 +3,15 @@
   --bg:#f5f7fb;
   --card:#ffffff;
   --muted:#6b7280;
-  --accent1:linear-gradient(135deg,#6ee7b7,#60a5fa);
-  --accent2:linear-gradient(135deg,#818cf8,#60a5fa);
+  --accent:#4f46e5; /* 統一されたアクセントカラー */
   
   /* UI要素 */
   --control-bg:#f8fafc;
   --control-border:#e2e8f0;
   --input-border:#eef3fb;
   --input-focus:#818cf8;
-  --btn-shadow:0 6px 12px rgba(96,165,250,0.12);
+  --btn-shadow:0 2px 4px rgba(79,70,229,0.12);
+  --btn-hover-shadow:0 4px 8px rgba(79,70,229,0.2);
   
   /* 基本設定 */
   --radius:12px;
@@ -131,7 +131,7 @@ body{
   box-shadow: var(--shadow);
 }
 .btn{
-  background: var(--accent1);
+  background: var(--accent);
   border: none;
   color: white;
   padding: 8px 12px;
@@ -139,20 +139,23 @@ body{
   cursor: pointer;
   box-shadow: var(--btn-shadow);
   transition: all 0.2s ease;
+  font-size: 0.9rem;
 }
 
 .btn:hover {
   opacity: 0.95;
   transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(96,165,250,0.16);
+  box-shadow: var(--btn-hover-shadow);
 }
 
-.template-controls .btn {
-  background: var(--accent2);
+.btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--btn-shadow);
 }
 
-.btn.danger{background:linear-gradient(90deg,#fb7185,#ef4444)}
-.btn:active{transform:translateY(1px)}
+.btn.danger {
+  background: #dc2626;
+}
 
 .scoreboard .score-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .totals{display:flex;gap:18px;color:var(--muted)}
@@ -163,7 +166,20 @@ body{
 .add-subject input{padding:8px;border-radius:8px;border:1px solid #eef3fb}
 
 .tiny{font-size:12px;color:var(--muted);padding:10px}
-.action-btn{background:transparent;border:none;color:#2563eb;cursor:pointer;padding:6px;border-radius:6px}
+.action-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  transition: background 0.2s ease;
+}
+
+.action-btn:hover {
+  background: rgba(79,70,229,0.08);
+}
 .delta-up{color:#16a34a}
 .delta-down{color:#ef4444}
 @media(max-width:680px){
