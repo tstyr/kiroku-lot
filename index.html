@@ -15,6 +15,7 @@
       </div>
       <div class="header-right">
         <label class="small-label">データ保存: ブラウザ（ローカルストレージ）</label>
+        <div class="version-label" id="versionLabel"></div>
       </div>
     </header>
 
@@ -32,6 +33,15 @@
         <button id="saveAsPrevBtn" class="btn">現在を「前回」として保存</button>
         <button id="exportBtn" class="btn">JSON をエクスポート</button>
         <input id="importInput" type="file" accept=".json" />
+      </div>
+
+      <div class="template-controls row small">
+        <button id="saveTemplateBtn" class="btn">現在の教科リストをテンプレートとして保存</button>
+        <select id="templateSelect">
+          <option value="">テンプレートを選択...</option>
+        </select>
+        <button id="applyTemplateBtn" class="btn">テンプレートを適用</button>
+        <button id="shareTemplateBtn" class="btn">テンプレートを共有</button>
       </div>
 
       <div class="row small">
